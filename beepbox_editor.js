@@ -42690,6 +42690,7 @@ You should be redirected to the song at:<br /><br />
       this._renderedPitchChannelCount = -1;
       this._renderedNoiseChannelCount = -1;
       this._renderedModChannelCount = -1;
+      this._renderedEdo = _doc.song.edo;
       this._followPlayheadBar = -1;
       this._validateModDragLabelInput = (event) => {
         const label6 = event.target;
@@ -44691,6 +44692,21 @@ You should be redirected to the song at:<br /><br />
         if (this._pitchHeight > this._pitchBorder) {
           this._backgroundModRow.setAttribute("width", "" + (beatWidth - 2));
           this._backgroundModRow.setAttribute("height", "" + (this._pitchHeight - this._pitchBorder));
+        }
+        if (this._renderedEdo != this._doc.song.edo) {
+          this._renderedEdo = this._doc.song.edo;
+          while (this._svgNoteBackground.firstChild) {
+            this._svgNoteBackground.removeChild(this._svgNoteBackground.firstChild);
+          }
+          this._backgroundPitchRows.length = 0;
+          for (let i = 0; i < this._doc.song.edo; i++) {
+            const rectangle = SVG.rect();
+            rectangle.setAttribute("x", "1");
+            rectangle.setAttribute("fill", i == 0 ? ColorConfig.tonic : ColorConfig.pitchBackground);
+            this._svgNoteBackground.appendChild(rectangle);
+            this._backgroundPitchRows[i] = rectangle;
+          }
+          this._backgroundPitchRows[Math.round(this._doc.song.edo * Math.log2(3 / 2))].setAttribute("fill", this._doc.prefs.showFifth ? ColorConfig.fifthNote : ColorConfig.pitchBackground);
         }
         for (let j = 0; j < this._doc.song.edo; j++) {
           const rectangle = this._backgroundPitchRows[j];
