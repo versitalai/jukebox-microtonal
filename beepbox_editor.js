@@ -34806,12 +34806,9 @@ li.select2-results__option[role=group] > strong:hover {
       this._dirty = true;
     }
     notifyWatchers() {
-      if (!this._dirty) {
-        console.log("notifyWatchers: SKIP (not dirty)");
+      if (!this._dirty)
         return;
-      }
       this._dirty = false;
-      console.log("notifyWatchers: RUNNING " + this._watchers.length + " watchers");
       for (const watcher of this._watchers.concat()) {
         watcher();
       }
@@ -37848,30 +37845,30 @@ You should be redirected to the song at:<br /><br />
         }
       };
       this._saveChanges = () => {
-        this._doc.prompt = null;
-        this._doc.record(new ChangeEdo(this._doc, _EdoPrompt._validate(this._edo)), true);
-        this._doc.notifier.notifyWatchers();
-        if (this._doc._edoChangedCallback) {
-          this._doc._edoChangedCallback();
-        }
         const newEdo = _EdoPrompt._validate(this._edo);
-        const edoSelect = document.getElementById("edoSelect");
-        if (edoSelect) {
-          let hasValue = false;
-          for (let j = 0; j < edoSelect.options.length; j++) {
-            if (edoSelect.options[j].value == String(newEdo)) {
-              hasValue = true;
-              break;
+        this._doc.prompt = null;
+        this._doc.record(new ChangeEdo(this._doc, newEdo), true);
+        this._doc.notifier.notifyWatchers();
+        try {
+          const select15 = document.getElementById("edoSelect");
+          if (select15) {
+            let exists = false;
+            for (let i = 0; i < select15.options.length; i++) {
+              if (select15.options[i].value === String(newEdo)) {
+                exists = true;
+                break;
+              }
             }
+            if (!exists) {
+              const opt = document.createElement("option");
+              opt.value = String(newEdo);
+              opt.text = String(newEdo) + " \u2605";
+              select15.appendChild(opt);
+            }
+            select15.value = String(newEdo);
           }
-          if (!hasValue) {
-            const opt = document.createElement("option");
-            opt.value = String(newEdo);
-            opt.text = String(newEdo) + " \u2605";
-            const customOption = edoSelect.options[edoSelect.options.length - 1];
-            edoSelect.insertBefore(opt, customOption);
-            edoSelect.value = String(newEdo);
-          }
+        } catch (e) {
+          console.error("EDO DOM error:", e);
         }
       };
       this._edo.value = this._doc.song.edo + "";
@@ -48712,7 +48709,6 @@ You should be redirected to the song at:<br /><br />
       this._edoSelect = select14({ id: "edoSelect" });
       this._favoriteEdos = [];
       this._rebuildEdoSelect = () => {
-        console.log("REBUILD called, currentEdo=" + this.doc.song.edo + ", value=" + this._edoSelect.value);
         const currentEdo = this.doc.song.edo;
         while (this._edoSelect.firstChild) {
           this._edoSelect.removeChild(this._edoSelect.firstChild);
@@ -49202,17 +49198,6 @@ You should be redirected to the song at:<br /><br />
         this._scaleSelect.title = createScales(this.doc.song.edo)[this.doc.song.scale].realName;
         setSelectedValue(this._keySelect, createKeys(this.doc.song.edo).length - 1 - this.doc.song.key);
         setSelectedValue(this._edoSelect, this.doc.song.edo);
-        console.log("whenUpdated: edoSelect.value=" + this._edoSelect.value + ", song.edo=" + this.doc.song.edo);
-        if (this._edoSelect.value != String(this.doc.song.edo)) {
-          console.log("whenUpdated: scheduling rebuild");
-          setTimeout(() => {
-            this._rebuildEdoSelect();
-          }, 0);
-        }
-        this.doc._edoChangedCallback = () => {
-          this._rebuildEdoSelect();
-          this.doc._edoChangedCallback = null;
-        };
         this._octaveStepper.value = Math.round(this.doc.song.octave).toString();
         this._tempoSlider.updateValue(Math.max(0, Math.round(this.doc.song.tempo)));
         this._tempoStepper.value = Math.round(this.doc.song.tempo).toString();
