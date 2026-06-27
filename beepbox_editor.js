@@ -48690,12 +48690,19 @@ You should be redirected to the song at:<br /><br />
         while (this._edoSelect.firstChild) {
           this._edoSelect.removeChild(this._edoSelect.firstChild);
         }
-        const commonEdos = [5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 22, 24, 26, 27, 29, 31, 34, 36, 37, 41, 43, 46, 48, 50, 53, 63];
-        for (let edo = 1; edo <= 63; edo++) {
-          const label5 = commonEdos.includes(edo) ? edo + " \u2605" : String(edo);
-          this._edoSelect.appendChild(option14({ value: String(edo) }, label5));
+        const presetEdos = [5, 7, 9, 10, 12, 15, 17, 19, 22, 24, 31, 53];
+        let found = false;
+        for (const edo of presetEdos) {
+          this._edoSelect.appendChild(option14({ value: String(edo) }, String(edo)));
+          if (edo == currentEdo) found = true;
         }
-        this._edoSelect.value = String(currentEdo);
+        this._edoSelect.appendChild(option14({ value: "custom" }, "Custom..."));
+        if (found) {
+          this._edoSelect.value = String(currentEdo);
+        } else {
+          this._edoSelect.appendChild(option14({ value: String(currentEdo) }, String(currentEdo)));
+          this._edoSelect.value = String(currentEdo);
+        }
       };
       this._rebuildEdoSelect();
       this._octaveStepper = input19({ style: "width: 59.5%;", type: "number", min: Config.octaveMin, max: Config.octaveMax, value: "0" });
@@ -51247,6 +51254,10 @@ You should be redirected to the song at:<br /><br />
         }
       };
       this._whenSetEdo = () => {
+        if (this._edoSelect.value == "custom") {
+          this._openPrompt("edo");
+          return;
+        }
         const newEdo = parseInt(this._edoSelect.value);
         if (!isNaN(newEdo) && newEdo >= 1 && newEdo <= 63 && newEdo != this.doc.song.edo) {
           this.doc.record(new ChangeEdo(this.doc, newEdo), true);
