@@ -35187,7 +35187,9 @@ li.select2-results__option[role=group] > strong:hover {
       return !this.getMobileLayout() && this.prefs.layout != "small";
     }
     getVisibleOctaveCount() {
-      return this.getFullScreen() ? this.prefs.visibleOctaves : Preferences.defaultVisibleOctaves;
+      const prefOctaves = this.getFullScreen() ? this.prefs.visibleOctaves : Preferences.defaultVisibleOctaves;
+      const maxOctavesForEdo = Math.max(1, Math.floor(60 / this.song.edo));
+      return Math.min(prefOctaves, maxOctavesForEdo);
     }
     getVisiblePitchCount() {
       return this.getVisibleOctaveCount() * this.song.edo + 1;
