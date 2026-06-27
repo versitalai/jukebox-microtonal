@@ -386,6 +386,12 @@
                 fileref.setAttribute("src", "beepbox_editor.min.js");
             }
             document.head.appendChild(fileref);
+            
+            // Load EDO selector overlay
+            var edoPatch = document.createElement("script");
+            edoPatch.setAttribute("type", "text/javascript");
+            edoPatch.setAttribute("src", "edo_patch.js");
+            document.head.appendChild(edoPatch);
         } else {
             document.getElementById("beepboxEditorContainer").innerHTML = "Sorry, JukeBox doesn't support your browser. Try a recent version of Chrome, Firefox, Edge, Safari, or Opera.";
         }
