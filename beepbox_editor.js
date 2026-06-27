@@ -16567,7 +16567,8 @@ li.select2-results__option[role=group] > strong:hover {
     }
     initToDefault(andResetChannels = true) {
       this.scale = 0;
-      this.scaleCustom = [true, false, false, false, false, false, false, false, false, false, false, false];
+      const defaultEdo = this.edo || 12;
+      this.scaleCustom = [true].concat(Array(defaultEdo - 1).fill(false));
       this.key = 0;
       this.edo = 12;
       this.octave = 0;
@@ -17437,7 +17438,7 @@ li.select2-results__option[role=group] > strong:hover {
             {
               this.scale = clamp(0, Config.scales.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
               if (this.scale == Config.scales["dictionary"]["Custom"].index) {
-                for (var i = 1; i < Config.pitchesPerOctave; i++) {
+                for (var i = 1; i < this.edo; i++) {
                   this.scaleCustom[i] = base64CharCodeToInt[compressed.charCodeAt(charIndex++)] == 1;
                 }
               }
@@ -31102,9 +31103,28 @@ li.select2-results__option[role=group] > strong:hover {
     constructor(doc, newValue) {
       super();
       if (doc.song.edo != newValue) {
+        const oldEdo = doc.song.edo;
         doc.song.edo = newValue;
         doc.song.key = 0;
         doc.song.scale = 0;
+        const newScaleCustom = [true];
+        for (let i = 1; i < newValue; i++) {
+          newScaleCustom.push(doc.song.scaleCustom[i] || false);
+        }
+        doc.song.scaleCustom = newScaleCustom;
+        const maxPitchNew = Config.pitchOctaves * doc.song.edo - 1;
+        for (const channel of doc.song.channels) {
+          for (const pattern of channel.patterns) {
+            for (const note of pattern.notes) {
+              for (let k = 0; k < note.pitches.length; k++) {
+                note.pitches[k] = Math.max(0, Math.min(
+                  maxPitchNew,
+                  Math.round(note.pitches[k] * newValue / oldEdo)
+                ));
+              }
+            }
+          }
+        }
         doc.notifier.changed();
         this._didSomething();
       }
@@ -44693,28 +44713,24 @@ You should be redirected to the song at:<br /><br />
           this._backgroundModRow.setAttribute("width", "" + (beatWidth - 2));
           this._backgroundModRow.setAttribute("height", "" + (this._pitchHeight - this._pitchBorder));
         }
-        if (this._renderedEdo != this._doc.song.edo) {
-          this._renderedEdo = this._doc.song.edo;
-          while (this._svgNoteBackground.firstChild) {
-            this._svgNoteBackground.removeChild(this._svgNoteBackground.firstChild);
-          }
-          this._backgroundPitchRows.length = 0;
-          for (let i = 0; i < this._doc.song.edo; i++) {
-            const rectangle = SVG.rect();
-            rectangle.setAttribute("x", "1");
-            rectangle.setAttribute("fill", i == 0 ? ColorConfig.tonic : ColorConfig.pitchBackground);
-            this._svgNoteBackground.appendChild(rectangle);
-            this._backgroundPitchRows[i] = rectangle;
-          }
-          this._backgroundPitchRows[Math.round(this._doc.song.edo * Math.log2(3 / 2))].setAttribute("fill", this._doc.prefs.showFifth ? ColorConfig.fifthNote : ColorConfig.pitchBackground);
+      }
+      if (this._renderedEdo != this._doc.song.edo) {
+        this._renderedEdo = this._doc.song.edo;
+        while (this._svgNoteBackground.firstChild) {
+          this._svgNoteBackground.removeChild(this._svgNoteBackground.firstChild);
         }
-        for (let j = 0; j < this._doc.song.edo; j++) {
-          const rectangle = this._backgroundPitchRows[j];
-          const y = (this._doc.song.edo - j) % this._doc.song.edo;
-          rectangle.setAttribute("width", "" + (beatWidth - 2));
-          rectangle.setAttribute("y", "" + (y * this._pitchHeight + 1));
-          rectangle.setAttribute("height", "" + (this._pitchHeight - 2));
+        this._backgroundPitchRows.length = 0;
+        for (let i = 0; i < this._doc.song.edo; i++) {
+          const rectangle = SVG.rect();
+          rectangle.setAttribute("x", "1");
+          rectangle.setAttribute("fill", i == 0 ? ColorConfig.tonic : ColorConfig.pitchBackground);
+          this._svgNoteBackground.appendChild(rectangle);
+          this._backgroundPitchRows[i] = rectangle;
         }
+        this._backgroundPitchRows[Math.round(this._doc.song.edo * Math.log2(3 / 2))].setAttribute("fill", this._doc.prefs.showFifth ? ColorConfig.fifthNote : ColorConfig.pitchBackground);
+        this._renderedFifths = !this._doc.prefs.showFifth;
+        this._renderedBeatWidth = -1;
+        this._renderedPitchHeight = -1;
       }
       if (this._interactive) {
         if (!this._mouseDown)
