@@ -34806,9 +34806,12 @@ li.select2-results__option[role=group] > strong:hover {
       this._dirty = true;
     }
     notifyWatchers() {
-      if (!this._dirty)
+      if (!this._dirty) {
+        console.log("notifyWatchers: SKIP (not dirty)");
         return;
+      }
       this._dirty = false;
+      console.log("notifyWatchers: RUNNING " + this._watchers.length + " watchers");
       for (const watcher of this._watchers.concat()) {
         watcher();
       }
@@ -37848,6 +37851,28 @@ You should be redirected to the song at:<br /><br />
         this._doc.prompt = null;
         this._doc.record(new ChangeEdo(this._doc, _EdoPrompt._validate(this._edo)), true);
         this._doc.notifier.notifyWatchers();
+        if (this._doc._edoChangedCallback) {
+          this._doc._edoChangedCallback();
+        }
+        const newEdo = _EdoPrompt._validate(this._edo);
+        const edoSelect = document.getElementById("edoSelect");
+        if (edoSelect) {
+          let hasValue = false;
+          for (let j = 0; j < edoSelect.options.length; j++) {
+            if (edoSelect.options[j].value == String(newEdo)) {
+              hasValue = true;
+              break;
+            }
+          }
+          if (!hasValue) {
+            const opt = document.createElement("option");
+            opt.value = String(newEdo);
+            opt.text = String(newEdo) + " \u2605";
+            const customOption = edoSelect.options[edoSelect.options.length - 1];
+            edoSelect.insertBefore(opt, customOption);
+            edoSelect.value = String(newEdo);
+          }
+        }
       };
       this._edo.value = this._doc.song.edo + "";
       this._edo.min = "1";
@@ -48684,23 +48709,34 @@ You should be redirected to the song at:<br /><br />
       this._optionsMenu = select14({ style: "width: 100%;" }, option14({ selected: true, disabled: true, hidden: false }, "Preferences"), optgroup2({ label: "Technical" }, option14({ value: "autoPlay" }, "Auto Play on Load"), option14({ value: "autoFollow" }, "Auto Follow Playhead"), option14({ value: "enableNotePreview" }, "Hear Added Notes"), option14({ value: "notesOutsideScale" }, "Place Notes Out of Scale"), option14({ value: "setDefaultScale" }, "Set Current Scale as Default"), option14({ value: "alwaysFineNoteVol" }, "Always Fine Note Volume"), option14({ value: "enableChannelMuting" }, "Enable Channel Muting"), option14({ value: "instrumentCopyPaste" }, "Enable Copy/Paste Buttons"), option14({ value: "instrumentImportExport" }, "Enable Import/Export Buttons"), option14({ value: "displayBrowserUrl" }, "Enable Song Data in URL"), option14({ value: "closePromptByClickoff" }, "Close Prompts on Click Off"), option14({ value: "rollNoveltyPresets" }, "Can Randomly Select Novelty Presets"), option14({ value: "recordingSetup" }, "Note Recording...")), optgroup2({ label: "Appearance" }, option14({ value: "showFifth" }, 'Highlight "Fifth" Note'), option14({ value: "notesFlashWhenPlayed" }, "Notes Flash When Played (DogeBox2)"), option14({ value: "instrumentButtonsAtTop" }, "Instrument Buttons at Top"), option14({ value: "frostedGlassBackground" }, "Frosted Glass Prompt Backdrop"), option14({ value: "showChannels" }, "Show All Channels"), option14({ value: "showScrollBar" }, "Show Octave Scroll Bar"), option14({ value: "showInstrumentScrollbars" }, "Show Intsrument Scrollbars"), option14({ value: "showLetters" }, "Show Piano Keys"), option14({ value: "displayVolumeBar" }, "Show Playback Volume"), option14({ value: "showOscilloscope" }, "Show Oscilloscope"), option14({ value: "showSampleLoadingStatus" }, "Show Sample Loading Status"), option14({ value: "showDescription" }, "Show Description"), option14({ value: "layout" }, "Set Layout..."), option14({ value: "colorTheme" }, "Set Theme..."), option14({ value: "customTheme" }, "Custom Theme...")));
       this._scaleSelect = buildScaleOptions(select14(), createScales(this.doc.song.edo).map((scale) => scale.name), createBreaks(this.doc.song.edo), createBreakNames(this.doc.song.edo));
       this._keySelect = buildOptions(select14(), createKeys(this.doc.song.edo).map((key) => key.name).reverse());
-      this._edoSelect = select14({});
+      this._edoSelect = select14({ id: "edoSelect" });
+      this._favoriteEdos = [];
       this._rebuildEdoSelect = () => {
+        console.log("REBUILD called, currentEdo=" + this.doc.song.edo + ", value=" + this._edoSelect.value);
         const currentEdo = this.doc.song.edo;
         while (this._edoSelect.firstChild) {
           this._edoSelect.removeChild(this._edoSelect.firstChild);
         }
         const presetEdos = [5, 7, 9, 10, 12, 15, 17, 19, 22, 24, 31, 53];
         let found = false;
-        for (const edo of presetEdos) {
+        for (let i = 0; i < presetEdos.length; i++) {
+          const edo = presetEdos[i];
           this._edoSelect.appendChild(option14({ value: String(edo) }, String(edo)));
           if (edo == currentEdo) found = true;
+        }
+        for (let i = 0; i < this._favoriteEdos.length; i++) {
+          const edo = this._favoriteEdos[i];
+          if (presetEdos.indexOf(edo) == -1) {
+            this._edoSelect.appendChild(option14({ value: String(edo) }, String(edo) + " \u2605"));
+            if (edo == currentEdo) found = true;
+          }
         }
         this._edoSelect.appendChild(option14({ value: "custom" }, "Custom..."));
         if (found) {
           this._edoSelect.value = String(currentEdo);
         } else {
-          this._edoSelect.appendChild(option14({ value: String(currentEdo) }, String(currentEdo)));
+          this._edoSelect.appendChild(option14({ value: String(currentEdo) }, String(currentEdo) + " \u2605"));
+          this._favoriteEdos.push(currentEdo);
           this._edoSelect.value = String(currentEdo);
         }
       };
@@ -49166,6 +49202,17 @@ You should be redirected to the song at:<br /><br />
         this._scaleSelect.title = createScales(this.doc.song.edo)[this.doc.song.scale].realName;
         setSelectedValue(this._keySelect, createKeys(this.doc.song.edo).length - 1 - this.doc.song.key);
         setSelectedValue(this._edoSelect, this.doc.song.edo);
+        console.log("whenUpdated: edoSelect.value=" + this._edoSelect.value + ", song.edo=" + this.doc.song.edo);
+        if (this._edoSelect.value != String(this.doc.song.edo)) {
+          console.log("whenUpdated: scheduling rebuild");
+          setTimeout(() => {
+            this._rebuildEdoSelect();
+          }, 0);
+        }
+        this.doc._edoChangedCallback = () => {
+          this._rebuildEdoSelect();
+          this.doc._edoChangedCallback = null;
+        };
         this._octaveStepper.value = Math.round(this.doc.song.octave).toString();
         this._tempoSlider.updateValue(Math.max(0, Math.round(this.doc.song.tempo)));
         this._tempoStepper.value = Math.round(this.doc.song.tempo).toString();
